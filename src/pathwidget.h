@@ -29,8 +29,12 @@ class PathWidget : public QLineEdit {
     void onTextChanged(const QString &text);
     void updateValidation();
 
+  protected:
+    void focusInEvent(QFocusEvent *event) override;
+
   private:
     void setupUI();
+    void initCompleter();
     void updatePalette();
     QString getInitialDir() const;
     QString placeholderForMode() const;
@@ -41,4 +45,5 @@ class PathWidget : public QLineEdit {
     bool fileMode = true;
     bool validateExist = !false;
     bool isValid = true;
+    bool completerInitialized = false;
 };

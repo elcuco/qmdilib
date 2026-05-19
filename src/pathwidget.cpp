@@ -6,20 +6,33 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFileSystemModel>
+#include <QFocusEvent>
 #include <QStyle>
 
 PathWidget::PathWidget(QWidget *parent)
     : QLineEdit(parent), fsModel(new QFileSystemModel(this)),
       completer(new QCompleter(fsModel, this)) {
     setupUI();
-    fsModel->setRootPath(QDir::rootPath());
     fsModel->setNameFilterDisables(false);
     fsModel->setFilter(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
     completer->setModel(fsModel);
     completer->setCompletionMode(QCompleter::InlineCompletion);
     completer->setCaseSensitivity(Qt::CaseInsensitive);
-    setCompleter(completer);
     connect(this, &QLineEdit::textChanged, this, &PathWidget::onTextChanged);
+}
+
+void PathWidget::focusInEvent(QFocusEvent *event) {
+    QLineEdit::focusInEvent(event);
+    initCompleter();
+}
+
+void PathWidget::initCompleter() {
+    if (completerInitialized) {
+        return;
+    }
+    completerInitialized = true;
+    fsModel->setRootPath(QDir::rootPath());
+    setCompleter(completer);
 }
 
 void PathWidget::setupUI() {
