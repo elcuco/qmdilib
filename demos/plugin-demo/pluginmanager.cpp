@@ -1282,8 +1282,29 @@ void PluginManager::updateToolbarsMenu() {
 void PluginManager::on_actionOpen_triggered() {
     static QString workingDir;
 
-    if (workingDir.isEmpty()) {
-        workingDir = QDir::homePath();
+    QString dialogLocation;
+
+    if (auto client = mdiServer->getCurrentClient()) {
+        const QString fileName = client->mdiClientFileName();
+        const QUrl url = QUrl::fromUserInput(fileName);
+        if (url.isLocalFile()) {
+            dialogLocation = QFileInfo(url.toLocalFile()).absolutePath();
+        } else if (url.isValid() && !url.scheme().isEmpty()) {
+            dialogLocation = url.toString();
+        } else {
+            dialogLocation = QFileInfo(fileName).absolutePath();
+        }
+    }
+
+    // Fallbacks:
+    // 1. previously used directory
+    // 2. HOME (temporary only, not persisted)
+    if (dialogLocation.isEmpty()) {
+        if (!workingDir.isEmpty()) {
+            dialogLocation = workingDir;
+        } else {
+            dialogLocation = QDir::homePath();
+        }
     }
     QStringList filters;
     for (auto p : std::as_const(plugins)) {
@@ -1302,13 +1323,23 @@ void PluginManager::on_actionOpen_triggered() {
     std::sort(filters.begin(), filters.end());
     auto filterString = filters.join(";;");
     auto selectedFiles =
-        QFileDialog::getOpenFileNames(this, tr("Open File(s)"), workingDir, filterString);
+        QFileDialog::getOpenFileNames(this, tr("Open File(s)"), dialogLocation, filterString);
+
     if (selectedFiles.isEmpty()) {
         return;
     }
 
-    auto fi = QFileInfo(selectedFiles.first());
-    workingDir = fi.absolutePath();
+    // Persist only usable local paths
+    auto selectedUrl = QUrl::fromUserInput(selectedFiles.first());
+    if (selectedUrl.isLocalFile()) {
+        workingDir = QFileInfo(selectedUrl.toLocalFile()).absolutePath();
+    } else {
+        auto fi = QFileInfo(selectedFiles.first());
+        if (fi.exists()) {
+            workingDir = fi.absolutePath();
+        }
+    }
+
     openFiles(selectedFiles);
 }
 
