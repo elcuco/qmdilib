@@ -436,8 +436,13 @@ PluginManager::~PluginManager() {
         delete settingsManager;
     }
 
-    qDeleteAll(plugins);
-    plugins.clear();
+    // Remove each plugin from the list *before* deleting it. qDeleteAll() leaves
+    // the already-deleted entries in place, so a plugin that emits a signal from
+    // its destructor (for example a QProcess member being reaped) can re-enter
+    // the manager and walk a list full of dangling pointers.
+    while (!plugins.isEmpty()) {
+        delete plugins.takeLast();
+    }
     delete ui;
 }
 
@@ -826,7 +831,16 @@ QFuture<CommandArgs> PluginManager::handleCommandAsync(const QString &command,
     IPlugin *bestPlugin = nullptr;
     auto highestScore = 0;
 
-    for (auto &p : plugins) {
+    // Iterate a snapshot, never `plugins` itself. This is dispatched from arbitrary
+    // places - a QProcess::finished handler broadcasting BuildFinished, for one -
+    // and a handler may re-enter the bus, add or remove a plugin, or otherwise
+    // cause the list to detach. `for (auto &p : plugins)` binds non-const begin()/
+    // end() once and then keeps walking that buffer even if it is replaced or
+    // freed underneath, which reads freed memory and calls through a garbage
+    // vptr. Copying a list of pointers is cheap; holding the reference also keeps
+    // the original buffer alive for the duration of the loop.
+    auto const currentPlugins = plugins;
+    for (auto p : currentPlugins) {
         if (!p->isEnabled()) {
             continue;
         }
