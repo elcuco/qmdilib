@@ -1519,7 +1519,7 @@ void PluginManager::doMoveTabBackward() {
     mdiServer->moveClient(i, i - 1);
 }
 
-size_t PluginManager::visibleTabs() const { return mdiServer->getClientsCount(); }
+int PluginManager::visibleTabs() const { return mdiServer->getClientsCount(); }
 
 qmdiClient *PluginManager::getMdiClient(int i) const { return mdiServer->getClient(i); }
 

@@ -115,7 +115,7 @@ class PluginManager : public QMainWindow, public qmdiHost {
     void doMoveTabBackward();
 
   public:
-    size_t visibleTabs() const;
+    int visibleTabs() const;
     qmdiClient *getMdiClient(int i) const;
     void loadConfig(const QString &fileName);
 
